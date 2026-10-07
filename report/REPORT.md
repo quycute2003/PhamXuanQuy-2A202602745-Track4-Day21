@@ -7,8 +7,8 @@
 - **Lớp:** [ĐIỀN]
 - **Link repo:** https://github.com/quycute2003/PhamXuanQuy-2A202602745-Track4-Day21
 - **Topic:** A — LiDAR-camera projection QA
-- **Dataset:** data/kitti_mini (thí nghiệm chính); data/synthetic (debug); data/nuscenes_mini_subset (kiểm tra phép chiếu ở CP2).
-- **Các frame đã dùng:** KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000; nuScenes scene-0103_010.
+- **Dataset:** data/kitti_mini (thí nghiệm chính, B2/B3); data/synthetic (debug); data/nuscenes_mini_subset (CP2 và so sánh B5).
+- **Các frame đã dùng:** KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000; nuScenes scene-0103_010, scene-0103_020 (ngày), scene-1094_010, scene-1094_020 (đêm).
 
 > Hãy viết ngắn: mỗi mục từ 3 đến 8 dòng, ưu tiên số liệu và hình ảnh.
 
@@ -50,6 +50,54 @@ File: `results/yaw_perturb_sweep.csv` (20 dòng theo frame), `results/yaw_pertur
 
 Nguồn ảnh: KITTI Vision Benchmark Suite; ảnh kiểm tra bổ sung từ nuScenes (Motional). Các ảnh còn lại nằm trong `results/figures/`, tái tạo bằng các lệnh ở mục 5. Quan sát synthetic yaw +2°: điểm trượt ngang khỏi cột và mép xe, nhưng FOV chỉ thay đổi từ 16.3% lên 16.5%; vì vậy FOV đơn lẻ chưa đủ để đánh giá calibration.
 
+**[B2] Stress test (+3 tối đa):** Sau khi đủ 5 sản phẩm bắt buộc, chạy `random_dropout` và `gaussian_noise` từ `starter/perturb.py`, mỗi loại 3 mức suy giảm cộng baseline, trên cùng 4 frame/class/GT của CP3. Seed cố định 0–4; tại mỗi cấu hình suy giảm so yaw 0° với +2° trên đúng cùng tập điểm và seed. Nhiễu giữ nguyên membership GT gốc; dropout chỉ tính các điểm GT còn giữ lại, không coi điểm bị xóa là lỗi alignment. Box rỗng được ghi riêng và loại khỏi trung bình; bảng là trung bình 5 seed, không phải một lần đo.
+
+| Suy giảm | Mức | Khớp box yaw 0° | Khớp box yaw +2° | Điểm GT/vật thể không rỗng |
+|---|---|---|---|---|
+| Dropout | giữ 100% | 94.79% | 61.91% | 363.81 |
+| Dropout | giữ 70% | 94.89% | 62.14% | 255.22 |
+| Dropout | giữ 50% | 94.75% | 61.39% | 187.19 |
+| Dropout | giữ 30% | 94.82% | 61.38% | 113.21 |
+| Gaussian XYZ | sigma 0 m | 94.79% | 61.91% | 363.81 |
+| Gaussian XYZ | sigma 0.02 m | 94.61% | 61.94% | 363.81 |
+| Gaussian XYZ | sigma 0.05 m | 93.82% | 61.53% | 363.81 |
+| Gaussian XYZ | sigma 0.10 m | 91.26% | 60.25% | 363.81 |
+
+![B2 stress test](../results/figures/bonus_stress.png)
+
+Dropout giảm mạnh số điểm nhưng không làm tỉ lệ khớp của điểm còn lại giảm tương ứng: metric alignment không thay thế metric mật độ/độ phủ vật thể. Ở mức giữ 30% và 50%, một số seed chỉ còn 25/26 box có điểm, nên cần báo cả box rỗng để thấy giới hạn của score; sigma 0.10 m làm baseline giảm 3.52 điểm phần trăm. File `bonus_stress.csv` có 320 dòng theo frame, `bonus_stress_summary.csv` có 80 cấu hình/seed, `bonus_stress_aggregated.csv` có 16 dòng tổng hợp; nằm trong `results/`. Chạy lại cả 3 CSV giống từng byte; error bar là SD giữa 5 seed, không phải khoảng tin cậy.
+
+**[B3] Latency (+2 tối đa):** Đo `run_one(prepared, 2)` bằng `time.perf_counter`, CPU, frame và mask GT đã cache; gồm perturb extrinsic, chiếu, tính hit và tổng hợp, **không gồm** I/O, chọn GT ban đầu hay vẽ ảnh. Mỗi frame chạy 21 lần: bỏ warmup đầu, lấy p50/p95 của 20 lần sau; chạy riêng, không chạy stress test đồng thời.
+
+| Frame | Số lần đo sau warmup | p50 (ms) | p95 (ms) |
+|---|---|---|---|
+| 000019 | 20 | 11.32 | 11.91 |
+| 000011 | 20 | 20.26 | 22.10 |
+| 000004 | 20 | 17.96 | 18.78 |
+| 000049 | 20 | 22.72 | 26.30 |
+
+Phần cứng: Intel Core i5-12500H, RAM hệ thống báo 15.71 GiB, có Intel Iris Xe và NVIDIA RTX 3050 Laptop nhưng phép đo không dùng GPU. `results/bonus_latency.csv` lưu 84 lần chạy, cột `warmup` chỉ rõ 4 lần bị loại; `bonus_latency_summary.csv` và `bonus_hardware.json` lưu phân vị, phần cứng/phiên bản Python-thư viện. Thời gian là số đo trên máy này, có thể đổi theo tải; đã đối chiếu p50/p95 với CSV gốc.
+
+**[B4] Tool dùng lại (+3 tối đa):** `src/exp_yaw_sweep.py` có mặc định chạy ngay, tham số dataset/frame/class/yaw/CSV, mỗi tham số có `help=...`; xuất chi tiết theo vật thể, class/range và tổng hợp. `src/plot_yaw_sweep.py` đọc các CSV và tự lấy tên dataset/class/số frame cho tiêu đề. Hướng dẫn và ví dụ đổi sang nuScenes ở mục 5; đã kiểm tra `--help` và chạy cả hai dataset.
+
+**[B5] Cùng thí nghiệm trên 2 dataset (+2 tối đa):** Dùng đúng script CP3, class Car/Pedestrian, 5 mức yaw, membership GT cố định và trung bình đều theo vật thể. KITTI dùng 4 frame trên; nuScenes dùng 2 frame ngày + 2 frame đêm nêu ở đầu REPORT, giữ bù ego-motion mặc định. Kết quả lưu `results/yaw_nuscenes_sweep*.csv` và `bonus_dataset_comparison.csv`; metadata camera/timestamp ở `bonus_dataset_context.csv`.
+
+| Yaw | KITTI khớp box | nuScenes khớp box | KITTI giảm so baseline (điểm %) | nuScenes giảm so baseline (điểm %) |
+|---|---|---|---|---|
+| 0° | 94.79% | 90.22% | 0.00 | 0.00 |
+| +0.5° | 88.08% | 75.85% | 6.70 | 14.37 |
+| +1° | 76.98% | 59.31% | 17.81 | 30.92 |
+| +2° | 61.91% | 33.54% | 32.88 | 56.68 |
+| +3° | 45.63% | 26.43% | 49.16 | 63.80 |
+
+![B5 so sánh hai dataset](../results/figures/bonus_dataset_comparison.png)
+
+KITTI trung bình 113342 điểm/frame, nuScenes 34720 (LiDAR 64 so với 32 beam theo tài liệu repo). NuScenes có 44/59 box Car/Pedestrian có điểm, so với KITTI 26/26; class mix cũng khác (nuScenes 26 Car/18 Pedestrian, KITTI 20/6). Score trên box ít điểm rời rạc hơn và các cảnh không ghép cặp, nên không thể quy chênh lệch chỉ cho beam hoặc ngày/đêm.
+
+Camera KITTI `fx=721.54`, ảnh 1242×375; nuScenes `fx=1252.81–1266.42`, ảnh 1600×900. Gần trục ảnh, yaw 1° cho quy mô dịch 12.59 px so với 21.87–22.11 px, tương ứng 1.01% so với 1.37–1.38% chiều rộng ảnh: ảnh lớn hơn bù một phần dịch pixel. Tiêu cự cũng phóng to box nên riêng `fx` không chứng minh được vì sao hit ratio giảm mạnh hơn; phân bố khoảng cách/class/truncation góp phần vào chênh lệch quan sát.
+
+Khác biệt label đáng lưu ý: KITTI có label 2D riêng, còn `starter/nuscenes_io.py` tạo box 2D từ 8 góc box 3D rồi clip vào ảnh; đây là hạn chế khi so sánh score như độ chính xác tuyệt đối. Camera nuScenes sớm hơn LiDAR 35.02–37.27 ms trong 4 frame, đã bù ego-motion; chưa loại hết chuyển động vật thể. Cả 4 CSV nuScenes tái lập giống từng byte. Tổng mức bonus xin xét B2+B3+B4+B5 là tối đa **10**, phụ thuộc tiêu chí bắt buộc và giảng viên, không tự coi là điểm đã đạt.
+
 ## 3. Failure case
 
 ![Geometry: người đi bộ hẹp bị lệch projection](../results/figures/fail_01_yaw_narrow_pedestrian.png)
@@ -70,9 +118,11 @@ Nguồn ảnh: KITTI Vision Benchmark Suite; ảnh kiểm tra bổ sung từ nuS
 
 ## 4. Khuyến nghị nếu triển khai thật
 
-Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
+Với ADAS hợp nhất LiDAR-camera, kiểm tra calibration sau thay đổi gá sensor và theo dõi alignment trong vận hành; vật hẹp/xa cần được theo dõi riêng vì metric trung bình có thể che mất lỗi. Dùng FOV cho vùng phủ, thêm sai lệch pixel/score khớp biên, lượng điểm trên vật thể, class/range và timestamp vào log.
 
-[ĐIỀN]
+Đánh đổi: chỉ đếm FOV nhanh nhưng bỏ sót drift; đối chiếu theo vật thể/biên cần thêm xử lý ảnh và điều kiện đủ điểm. Khi không có GT online, dùng đối tượng tĩnh được track hoặc bảng chuẩn trong kiểm tra định kỳ; đánh dấu phép hợp nhất thiếu tin cậy khi alignment bất thường và ưu tiên kiểm tra/hiệu chỉnh sensor.
+
+Bước tiếp theo: kiểm chứng ngưỡng trên nhiều scene, cả yaw âm, pitch/roll, dịch chuyển và thời gian LiDAR-camera; đo false alarm/miss trước khi áp dụng cảnh báo. Ngưỡng 80% baseline của CP4 là minh họa trên một vật thể, chưa phải ngưỡng an toàn đã xác nhận.
 
 ## 5. Cách chạy lại
 
@@ -95,6 +145,9 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -X utf8 -m src.exp_yaw_sweep --data-root data/kitti_mini --frames 000019 000011 000004 000049 --classes Car Pedestrian --yaw-levels 0 0.5 1 2 3
 .\.venv\Scripts\python.exe -X utf8 -m src.plot_yaw_sweep
 .\.venv\Scripts\python.exe -X utf8 -m src.analyze_failure
+.\.venv\Scripts\python.exe -X utf8 -m src.exp_yaw_sweep --data-root data/nuscenes_mini_subset --frames scene-0103_010 scene-0103_020 scene-1094_010 scene-1094_020 --out results/yaw_nuscenes_sweep.csv
+.\.venv\Scripts\python.exe -X utf8 -m src.plot_yaw_sweep --csv results/yaw_nuscenes_sweep.csv --out results/figures/yaw_nuscenes_sweep.png
+.\.venv\Scripts\python.exe -X utf8 -m src.bonus_experiments --seeds 0 1 2 3 4 --repeats 20
 ```
 
 Self-test phải in `CP2 self-test passed`; hai lệnh kiểm tra dữ liệu phải in `[PASS]`. Self-test kiểm tra điểm chuẩn, NaN/Inf, điểm sau camera, ngoài FOV, ngưỡng depth, biên ảnh, input rỗng, mẫu số chiếu bằng 0 và thứ tự mask/depth. Ảnh overlay được lưu trong `results/figures/`; nuScenes dùng bù ego-motion mặc định.
@@ -116,10 +169,14 @@ Remove-Item -LiteralPath results\check_rerun.csv, results\check_rerun_objects.cs
 
 `src.analyze_failure` tái tạo `results/failure_analysis.csv` (5 mức yaw) và hai ảnh `fail_01_yaw_narrow_pedestrian.png`, `fail_02_fov_metric_false_negative.png`. Có `--csv` và `--out-dir` để đổi nơi lưu; số đếm khớp dữ liệu theo vật thể/frame của CP3, cùng tập GT cố định.
 
+**[B4]** Chạy không tham số: `python -m src.exp_yaw_sweep`; xem hướng dẫn: `python -m src.exp_yaw_sweep --help`, `python -m src.plot_yaw_sweep --help`, `python -m src.bonus_experiments --help` trong môi trường đã cài. Ví dụ quét ngắn: `python -m src.exp_yaw_sweep --frames 000011 --yaw-levels 0 1 2 --out results/custom_sweep.csv`, sau đó `python -m src.plot_yaw_sweep --csv results/custom_sweep.csv --out results/figures/custom_sweep.png`.
+
+Bonus có thể chạy riêng với `--mode stress`, `--mode latency`, `--mode compare`; mode compare cần có hai bộ CSV KITTI/nuScenes do lệnh trên tạo. Stress dùng seed cố định để so CSV; latency là số đo thời gian mới mỗi lần chạy nên không yêu cầu giống byte.
+
 ## 6. Khai báo sử dụng AI
 
 Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã tự kiểm chứng kết quả đó bằng cách nào. Nếu không dùng AI, ghi "Không sử dụng". Xem quy định ở `RULES.md` mục 2.
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| Codex (OpenAI) | Đọc yêu cầu CP0–CP4, đề xuất claim, viết phép chiếu/self-test, cài môi trường, chạy demo/benchmark, vẽ biểu đồ và viết báo cáo. Dùng script mẫu CP3 làm điểm xuất phát, mở rộng mẫu số cố định, trung bình đều theo vật thể, tách class/range, lưu metric tham chiếu; tạo ảnh zoom và phân tích failure Geometry/Metric bằng dữ liệu chạy thật | Codex đã kiểm tra checksum, tự kiểm bằng số/ca biên, đối chiếu 3 số FOV và 15 tỉ lệ của đề, xem ảnh/biểu đồ; chạy benchmark hai lần cho 4 CSV giống từng byte, đối chiếu tổng hợp và số đếm failure với dữ liệu CP3. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại và giải thích code, metric, số liệu trước khi nộp. |
+| Codex (OpenAI) | Đọc CP0–CP4 và hướng dẫn bonus; viết phép chiếu, thí nghiệm, self-test, ảnh/biểu đồ và báo cáo. Dùng codelab và hàm starter làm nguồn, mở rộng metric GT cố định, class/range, failure Geometry/Metric, B2 stress, B3 latency, B4 CLI và B5 hai dataset | Codex đã đối chiếu số tham chiếu, kiểm tra checksum, xem ảnh/biểu đồ; tái lập CSV KITTI, nuScenes, stress; kiểm tra GT không đổi/input không bị ghi đè, p50/p95 và loại warmup, nguồn box 2D nuScenes. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại và giải thích code, metric, số liệu trước khi nộp. |

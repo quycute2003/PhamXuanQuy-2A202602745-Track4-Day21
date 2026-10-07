@@ -16,8 +16,8 @@ from src.exp_yaw_sweep import output_paths
 
 def main():
     parser = argparse.ArgumentParser(description="Plot frame, class, range and FOV yaw results")
-    parser.add_argument("--csv", type=Path, default=Path("results/yaw_perturb_sweep.csv"))
-    parser.add_argument("--out", type=Path, default=Path("results/figures/yaw_sweep.png"))
+    parser.add_argument("--csv", type=Path, default=Path("results/yaw_perturb_sweep.csv"), help="Frame CSV; sibling group/summary CSVs must exist")
+    parser.add_argument("--out", type=Path, default=Path("results/figures/yaw_sweep.png"), help="Output PNG path")
     args = parser.parse_args()
     paths = output_paths(args.csv)
     frames = pd.read_csv(paths["frames"], dtype={"frame": str})

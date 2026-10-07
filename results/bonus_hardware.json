@@ -1,0 +1,17 @@
+{
+  "platform": "Windows-10-10.0.26300-SP0",
+  "python": "3.11.4",
+  "numpy": "2.4.6",
+  "opencv": "5.0.0",
+  "pandas": "3.0.6",
+  "execution": "CPU only; cached frame + GT masks; excludes I/O, GT preparation, rendering",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+  "ram_bytes": 16869548032,
+  "gpu": [
+    "Intel(R) Iris(R) Xe Graphics",
+    "NVIDIA GeForce RTX 3050 Laptop GPU"
+  ],
+  "measured_repeats_per_frame": 20,
+  "warmups_per_frame": 1,
+  "yaw_deg": 2
+}

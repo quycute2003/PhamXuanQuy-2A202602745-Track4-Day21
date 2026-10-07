@@ -105,11 +105,11 @@ def output_paths(out):
 
 def main():
     parser = argparse.ArgumentParser(description="Yaw sweep: fixed GT points, per-object mean, class/range splits")
-    parser.add_argument("--data-root", default="data/kitti_mini")
-    parser.add_argument("--frames", nargs="+", default=list(FRAMES))
-    parser.add_argument("--yaw-levels", nargs="+", type=float, default=list(YAW_LEVELS))
-    parser.add_argument("--classes", nargs="+", default=list(CLASSES))
-    parser.add_argument("--out", type=Path, default=Path("results/yaw_perturb_sweep.csv"))
+    parser.add_argument("--data-root", default="data/kitti_mini", help="KITTI or nuScenes dataset root")
+    parser.add_argument("--frames", nargs="+", default=list(FRAMES), help="Frame IDs, in fixed evaluation order")
+    parser.add_argument("--yaw-levels", nargs="+", type=float, default=list(YAW_LEVELS), help="Yaw drift in degrees; must include 0")
+    parser.add_argument("--classes", nargs="+", default=list(CLASSES), help="Label classes to evaluate; defaults to Car Pedestrian")
+    parser.add_argument("--out", type=Path, default=Path("results/yaw_perturb_sweep.csv"), help="Frame CSV path; object/group/summary CSVs use the same stem")
     args = parser.parse_args()
     if 0 not in args.yaw_levels or not np.isfinite(args.yaw_levels).all():
         parser.error("--yaw-levels must include baseline 0 and contain only finite values")
