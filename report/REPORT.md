@@ -1,4 +1,4 @@
-# Báo cáo Day 6: [ĐIỀN tên đề tài ngắn]
+# Báo cáo Day 6: Độ nhạy của phép chiếu LiDAR-camera với lệch yaw
 
 > Thay **mọi** ô có chữ ĐIỀN nằm trong ngoặc vuông bằng nội dung của bạn, xoá luôn cả dấu ngoặc vuông. Lệnh `python tools/check_submission.py` sẽ báo FAIL nếu còn sót bất kỳ chỗ nào.
 
@@ -6,17 +6,21 @@
 - **MSSV:** 2A202602745
 - **Lớp:** [ĐIỀN]
 - **Link repo:** https://github.com/quycute2003/PhamXuanQuy-2A202602745-Track4-Day21
-- **Topic:** [ĐIỀN một chữ cái A/B/C/D/E/F] — [ĐIỀN tên topic]
-- **Dataset:** [ĐIỀN một hoặc nhiều trong: data/synthetic, data/kitti_mini, data/nuscenes_mini_subset, log riêng]
-- **Các frame đã dùng:** [ĐIỀN danh sách frame id, ví dụ 000011, 000049 hoặc scene-0103_010]
+- **Topic:** A — LiDAR-camera projection QA
+- **Dataset:** data/kitti_mini (thí nghiệm chính); data/synthetic (debug phép chiếu ở CP2)
+- **Các frame đã dùng:** Dự kiến KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000 để tự kiểm tra ở CP2.
 
 > Hãy viết ngắn: mỗi mục từ 3 đến 8 dòng, ưu tiên số liệu và hình ảnh.
 
 ## 1. Claim
 
-Một câu khẳng định kỹ thuật có thể kiểm chứng. Ví dụ: *"Lệch yaw 1° làm 12% điểm LiDAR rơi ra khỏi vật thể ở 30 m, phát hiện được bằng edge-alignment score với ngưỡng X."*
+**Claim nháp (giả thuyết CP1, chưa có số liệu):** Trên 4 frame KITTI 000019, 000011, 000004 và 000049, lệch yaw +2° quanh trục z của LiDAR làm tỉ lệ điểm của vật thể chiếu đúng vào 2D box tương ứng, trung bình theo vật thể Car/Pedestrian, giảm ít nhất 10 điểm phần trăm so với calibration gốc.
 
-[ĐIỀN]
+**Kế hoạch đo:** Quét yaw 0°, +0.5°, +1°, +2°, +3°; giữ nguyên frame, điểm đầu vào, class, translation và các góc khác. Đo thêm % điểm toàn frame nằm trong FOV.
+
+**Định nghĩa metric:** Chọn cố định các điểm hữu hạn nằm trong 3D box GT bằng calibration gốc; với mỗi vật thể có điểm, chia số điểm chiếu đúng vào 2D box của chính vật thể đó cho tổng số điểm đã chọn. Điểm ra ngoài ảnh hoặc sau camera vẫn nằm trong mẫu số và được tính là không khớp; lấy trung bình đều theo vật thể, bỏ DontCare và box không có điểm.
+
+**Tiêu chí kết luận:** Claim được ủng hộ nếu chênh lệch giữa yaw 0° và +2° đạt ít nhất 10 điểm phần trăm; nếu không, báo cáo số đo thực tế và bác bỏ hoặc sửa claim ở CP3.
 
 ## 2. Evidence
 
@@ -56,4 +60,4 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| [ĐIỀN] | | |
+| Codex (OpenAI) | Đọc yêu cầu CP0/CP1, điền thông tin, đề xuất topic A, frame và claim nháp | Codex đã đối chiếu tên repo với remote origin, kiểm tra file LiDAR của 4 frame và quy ước yaw trong starter/projection.py; học viên cần tự kiểm chứng phép chiếu và số liệu ở CP2/CP3. |
