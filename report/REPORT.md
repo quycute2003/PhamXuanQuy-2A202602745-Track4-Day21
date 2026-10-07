@@ -7,8 +7,8 @@
 - **Lớp:** [ĐIỀN]
 - **Link repo:** https://github.com/quycute2003/PhamXuanQuy-2A202602745-Track4-Day21
 - **Topic:** A — LiDAR-camera projection QA
-- **Dataset:** data/kitti_mini (thí nghiệm chính); data/synthetic (debug phép chiếu ở CP2)
-- **Các frame đã dùng:** Dự kiến KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000 để tự kiểm tra ở CP2.
+- **Dataset:** data/kitti_mini (thí nghiệm chính); data/synthetic (debug); data/nuscenes_mini_subset (kiểm tra phép chiếu ở CP2).
+- **Các frame đã dùng:** KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000; nuScenes scene-0103_010.
 
 > Hãy viết ngắn: mỗi mục từ 3 đến 8 dòng, ưu tiên số liệu và hình ảnh.
 
@@ -24,13 +24,23 @@
 
 ## 2. Evidence
 
-Bảng hoặc plot số liệu, kèm ảnh/video demo. Ghi rõ đường dẫn file trong `results/`.
+**Demo CP2:** Đã chạy self-test và 7 lệnh overlay. Ba ca chuẩn khớp đúng số điểm trong ảnh của hướng dẫn; benchmark tỉ lệ điểm khớp box để kiểm chứng claim sẽ thực hiện ở CP3.
 
-| Cấu hình / mức perturb | Metric 1 | Metric 2 | Ghi chú |
-|---|---|---|---|
-| [ĐIỀN] | | | |
+| Dataset / frame | Yaw | Tổng điểm | Điểm trong FOV | Tỉ lệ FOV |
+|---|---|---|---|---|
+| synthetic / 000000 | 0° | 23953 | 3910 | 16.3% |
+| synthetic / 000000 | +2° | 23953 | 3956 | 16.5% |
+| KITTI / 000019 | 0° | 115697 | 18792 | 16.2% |
+| KITTI / 000011 | 0° | 108004 | 19946 | 18.5% |
+| KITTI / 000004 | 0° | 115976 | 19063 | 16.4% |
+| KITTI / 000049 | 0° | 113691 | 18093 | 15.9% |
+| nuScenes / scene-0103_010 | 0° | 34720 | 3120 | 9.0% |
 
-![demo](../results/figures/[ĐIỀN].png)
+![KITTI: vật gần, frame 000019](../results/figures/overlay_000019_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png)
+![KITTI: người đi bộ, frame 000011](../results/figures/overlay_000011_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png)
+![KITTI: xe xa, frame 000004](../results/figures/overlay_000004_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png)
+
+Nguồn ảnh: KITTI Vision Benchmark Suite; ảnh kiểm tra bổ sung từ nuScenes (Motional). Các ảnh còn lại nằm trong `results/figures/`, tái tạo bằng các lệnh ở mục 5. Quan sát synthetic yaw +2°: điểm trượt ngang khỏi cột và mép xe, nhưng FOV chỉ thay đổi từ 16.3% lên 16.5%; vì vậy FOV đơn lẻ chưa đủ để đánh giá calibration.
 
 ## 3. Failure case
 
@@ -48,11 +58,24 @@ Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
 
 ## 5. Cách chạy lại
 
-Các lệnh tái tạo lại toàn bộ kết quả từ repo sạch.
+Chạy từ thư mục gốc repo bằng Windows PowerShell, Python 3.11. Dùng trực tiếp Python trong `.venv` để không phụ thuộc việc kích hoạt môi trường hay execution policy; `-X utf8` tránh lỗi đọc tiếng Việt trên Windows.
 
-```bash
-[ĐIỀN]
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -X utf8 -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -X utf8 tools/verify_data.py --data-root data/kitti_mini
+.\.venv\Scripts\python.exe -X utf8 tools/verify_data.py --data-root data/nuscenes_mini_subset
+.\.venv\Scripts\python.exe -X utf8 -m src.test_projection
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/synthetic --frame 000000
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/synthetic --frame 000000 --yaw-deg 2
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/kitti_mini --frame 000019
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/kitti_mini --frame 000011
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/kitti_mini --frame 000004
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/kitti_mini --frame 000049
+.\.venv\Scripts\python.exe -X utf8 -m starter.projection --data-root data/nuscenes_mini_subset --frame scene-0103_010
 ```
+
+Self-test phải in `CP2 self-test passed`; hai lệnh kiểm tra dữ liệu phải in `[PASS]`. Self-test kiểm tra điểm chuẩn, NaN/Inf, điểm sau camera, ngoài FOV, ngưỡng depth, biên ảnh, input rỗng, mẫu số chiếu bằng 0 và thứ tự mask/depth. Ảnh overlay được lưu trong `results/figures/`; nuScenes dùng bù ego-motion mặc định.
 
 ## 6. Khai báo sử dụng AI
 
@@ -60,4 +83,4 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| Codex (OpenAI) | Đọc yêu cầu CP0/CP1, điền thông tin, đề xuất topic A, frame và claim nháp | Codex đã đối chiếu tên repo với remote origin, kiểm tra file LiDAR của 4 frame và quy ước yaw trong starter/projection.py; học viên cần tự kiểm chứng phép chiếu và số liệu ở CP2/CP3. |
+| Codex (OpenAI) | Đọc yêu cầu CP0–CP2, điền thông tin, đề xuất topic/frame/claim; viết 2 hàm TODO và self-test; cài môi trường, chạy demo và cập nhật báo cáo | Codex đã chạy kiểm tra checksum hai dataset, self-test bằng số và ca biên, đối chiếu 3910/19946/3120 điểm trong FOV với đề, xem 7 ảnh overlay. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại, giải thích phép chiếu và kiểm chứng claim bằng benchmark ở CP3. |
