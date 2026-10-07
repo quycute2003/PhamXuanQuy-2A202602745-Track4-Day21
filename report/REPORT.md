@@ -1,16 +1,12 @@
 # Báo cáo Day 6: Độ nhạy của phép chiếu LiDAR-camera với lệch yaw
 
-> Thay **mọi** ô có chữ ĐIỀN nằm trong ngoặc vuông bằng nội dung của bạn, xoá luôn cả dấu ngoặc vuông. Lệnh `python tools/check_submission.py` sẽ báo FAIL nếu còn sót bất kỳ chỗ nào.
-
 - **Họ tên:** Phạm Xuân Quý
 - **MSSV:** 2A202602745
-- **Lớp:** [ĐIỀN]
+- **Lớp:** VinUni AI20K — Track 4: Computer Vision and Robotics
 - **Link repo:** https://github.com/quycute2003/PhamXuanQuy-2A202602745-Track4-Day21
 - **Topic:** A — LiDAR-camera projection QA
 - **Dataset:** data/kitti_mini (thí nghiệm chính, B2/B3); data/synthetic (debug); data/nuscenes_mini_subset (CP2 và so sánh B5).
 - **Các frame đã dùng:** KITTI 000019 (vật gần), 000011 (người đi bộ), 000004 (xe xa), 000049 (che khuất); synthetic 000000; nuScenes scene-0103_010, scene-0103_020 (ngày), scene-1094_010, scene-1094_020 (đêm).
-
-> Hãy viết ngắn: mỗi mục từ 3 đến 8 dòng, ưu tiên số liệu và hình ảnh.
 
 ## 1. Claim
 
@@ -175,8 +171,11 @@ Bonus có thể chạy riêng với `--mode stress`, `--mode latency`, `--mode c
 
 ## 6. Khai báo sử dụng AI
 
-Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã tự kiểm chứng kết quả đó bằng cách nào. Nếu không dùng AI, ghi "Không sử dụng". Xem quy định ở `RULES.md` mục 2.
+Tôi sử dụng Codex (OpenAI) để hỗ trợ thực hiện bài lab theo các checkpoint. Phần hỗ trợ gồm đọc yêu cầu, đề xuất claim và cách đo, viết hai hàm projection, các script thí nghiệm/kiểm tra, vẽ hình và soạn báo cáo. Code và phần diễn giải được AI hỗ trợ đáng kể; số liệu và ảnh trong bài được tạo từ code chạy trên dữ liệu của repo.
 
-| Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
+| Công cụ / nguồn | Phạm vi sử dụng | Kiểm chứng đã thực hiện trong repo |
 |---|---|---|
-| Codex (OpenAI) | Đọc CP0–CP4 và hướng dẫn bonus; viết phép chiếu, thí nghiệm, self-test, ảnh/biểu đồ và báo cáo. Dùng codelab và hàm starter làm nguồn, mở rộng metric GT cố định, class/range, failure Geometry/Metric, B2 stress, B3 latency, B4 CLI và B5 hai dataset | Codex đã đối chiếu số tham chiếu, kiểm tra checksum, xem ảnh/biểu đồ; tái lập CSV KITTI, nuScenes, stress; kiểm tra GT không đổi/input không bị ghi đè, p50/p95 và loại warmup, nguồn box 2D nuScenes. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại và giải thích code, metric, số liệu trước khi nộp. |
+| Codex (OpenAI) | Hỗ trợ viết code, thiết kế và chạy thí nghiệm, phân tích failure, vẽ biểu đồ, biên tập báo cáo | Công cụ đã thực thi self-test projection/metric, đối chiếu số tham chiếu, kiểm tra checksum, so CSV giữa hai lần chạy, kiểm tra mẫu số GT và warmup/latency; ảnh kết quả đã được xem lại trong phiên làm việc. |
+| Codelab Day 6 và code starter của đề bài | Tham khảo phép chiếu, chọn điểm trong box, yaw sweep và giao thức đo latency; dùng các hàm perturb có sẵn | Script mẫu được mở rộng với mẫu số GT cố định, trung bình theo vật thể và tách class/range; metric tham chiếu khớp 15 giá trị của đề. Nguồn được ghi trong docstring các script. |
+
+Các kiểm tra trên do Codex thực thi trong phiên hỗ trợ, không phải xác nhận rằng tôi đã tự kiểm chứng toàn bộ độc lập. Tôi chịu trách nhiệm về bài nộp và cần nắm được công thức chiếu, cách tính metric, nguồn số liệu và giới hạn của kết luận.
