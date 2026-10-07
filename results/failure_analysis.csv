@@ -1,0 +1,6 @@
+dataset,frame,object_id,type,distance_m,bbox_width_px,occluded,truncated,yaw_deg,object_points,visible_object_points,hit_points,hit_ratio,n_points,inside_image,fov_ratio,common_visible_points,median_du_px,median_abs_du_px,fov_alarm_below_90pct_baseline,object_alarm_below_80pct_baseline
+kitti_mini,000011,3,Pedestrian,34.1509355655,15.33,0,0,0,40,40,40,1,108004,19946,0.184678345246,40,0,0,False,False
+kitti_mini,000011,3,Pedestrian,34.1509355655,15.33,0,0,0.5,40,40,21,0.525,108004,19946,0.184678345246,40,-6.36862957555,6.36862957555,False,True
+kitti_mini,000011,3,Pedestrian,34.1509355655,15.33,0,0,1,40,40,3,0.075,108004,19952,0.184733898744,40,-12.7314039847,12.7314039847,False,True
+kitti_mini,000011,3,Pedestrian,34.1509355655,15.33,0,0,2,40,40,0,0,108004,19963,0.184835746824,40,-25.4432251431,25.4432251431,False,True
+kitti_mini,000011,3,Pedestrian,34.1509355655,15.33,0,0,3,40,40,0,0,108004,19948,0.184696863079,40,-38.1424989077,38.1424989077,False,True

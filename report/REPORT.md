@@ -52,11 +52,21 @@ Nguồn ảnh: KITTI Vision Benchmark Suite; ảnh kiểm tra bổ sung từ nuS
 
 ## 3. Failure case
 
-Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên hệ tới lớp nào trong 6 lớp debug: I/O, Geometry, Time, Preprocess, Model, Metric.
+![Geometry: người đi bộ hẹp bị lệch projection](../results/figures/fail_01_yaw_narrow_pedestrian.png)
 
-![failure](../results/figures/fail_[ĐIỀN].png)
+- **Trường hợp:** KITTI `000011`, người đi bộ thứ 3, `fr["labels"][3]` (index từ 0), cách 34.15 m; box rộng 15.33 pixel, `occluded=0`, `truncated=0`. Giả lập extrinsic lệch yaw, giữ nguyên 40 điểm GT, label, intrinsic và các tham số khác.
+- **Quan sát:** Điểm khớp box giảm **40/40 (100%) → 21/40 (52.5%) → 3/40 (7.5%) → 0/40 (0%)** ở yaw 0° / +0.5° / +1° / +2°. Cả 40 điểm vẫn nằm trong ảnh; ảnh zoom chỉ vẽ điểm của vật thể này, xanh lam là khớp và đỏ là trượt ra ngoài box.
+- **Nguyên nhân:** Với `fx=721.54 px`, quy mô dịch ngang `fx·tan(1°) ≈ 12.59 px`; số đo trung vị trên đúng 40 điểm là **12.73 px sang trái** ở +1° và **25.44 px** ở +2°, lớn so với box rộng **15.33 px**. Điểm của vật hẹp trượt khỏi label dù vẫn còn trong FOV.
+- **Lớp debug:** **Geometry** — extrinsic bị perturb có kiểm soát, không phải lỗi code chiếu. Self-test CP2 và 15 giá trị tham chiếu CP3 đã qua; vị trí GT được chọn bằng calibration gốc nên không đổi theo yaw.
+- **Phát hiện/khắc phục:** Trong kiểm tra định kỳ có GT hoặc bảng chuẩn, đề xuất cảnh báo khi `hit_ratio < 80% baseline` với ≥20 điểm và box không truncated/occluded; ca này báo từ +0.5°. Kiểm tra gá sensor và hiệu chỉnh extrinsic. Khi chạy trực tuyến không có GT 3D, cần dùng score khớp biên hoặc đối chiếu vật thể 2D đã track, ghi log sai lệch pixel và hiệu chuẩn ngưỡng trên nhiều scene; ngưỡng 80% hiện chỉ là đề xuất cho ca này.
 
-[ĐIỀN]
+![Metric: FOV không phát hiện được alignment sai](../results/figures/fail_02_fov_metric_false_negative.png)
+
+- **Trường hợp:** Cùng frame/vật thể, thử quy tắc cảnh báo chỉ khi tỉ lệ FOV giảm dưới **90% baseline**. Đây là quy tắc minh họa, không phải ngưỡng đã được xác nhận cho triển khai.
+- **Quan sát:** Yaw +2° làm target khớp box **100% → 0%**, nhưng số điểm toàn frame trong ảnh **19946 → 19963**, FOV **18.4678% → 18.4836%**. Quy tắc FOV không báo ở bất kỳ mức +0.5° / +1° / +2° / +3° nào đã thử.
+- **Nguyên nhân:** FOV chỉ đo điểm có nằm trong khung ảnh, không đo khớp vật thể; trượt ngang vài chục pixel chưa làm 40 điểm của người đi bộ rời ảnh. Vì thế một metric phủ ảnh có thể bỏ sót lỗi alignment nghiêm trọng.
+- **Lớp debug:** **Metric** — giới hạn của cách đo/cảnh báo, tách biệt với nguyên nhân Geometry tạo ra lệch projection.
+- **Phát hiện/khắc phục:** Giữ FOV để theo dõi vùng phủ, bổ sung metric alignment theo vật thể/biên và so với baseline theo class/range. CSV `results/failure_analysis.csv` lưu cả hai cờ cảnh báo cùng số điểm và dịch pixel; cần kiểm chứng false alarm/miss trên nhiều frame trước khi dùng ngưỡng thực tế. Nguồn ảnh: KITTI Vision Benchmark Suite.
 
 ## 4. Khuyến nghị nếu triển khai thật
 
@@ -84,6 +94,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -X utf8 -m src.test_yaw_sweep
 .\.venv\Scripts\python.exe -X utf8 -m src.exp_yaw_sweep --data-root data/kitti_mini --frames 000019 000011 000004 000049 --classes Car Pedestrian --yaw-levels 0 0.5 1 2 3
 .\.venv\Scripts\python.exe -X utf8 -m src.plot_yaw_sweep
+.\.venv\Scripts\python.exe -X utf8 -m src.analyze_failure
 ```
 
 Self-test phải in `CP2 self-test passed`; hai lệnh kiểm tra dữ liệu phải in `[PASS]`. Self-test kiểm tra điểm chuẩn, NaN/Inf, điểm sau camera, ngoài FOV, ngưỡng depth, biên ảnh, input rỗng, mẫu số chiếu bằng 0 và thứ tự mask/depth. Ảnh overlay được lưu trong `results/figures/`; nuScenes dùng bù ego-motion mặc định.
@@ -103,10 +114,12 @@ Remove-Item -LiteralPath results\check_rerun.csv, results\check_rerun_objects.cs
 
 `src.test_yaw_sweep` phải in `CP3 metric self-test passed`. Hai script thí nghiệm/vẽ có `--help` để đổi dataset, frame, class, mức yaw hoặc đường dẫn kết quả. Không có phép ngẫu nhiên nên không cần seed. Kết quả tái lập không bao gồm thời gian chạy hoặc metadata PNG.
 
+`src.analyze_failure` tái tạo `results/failure_analysis.csv` (5 mức yaw) và hai ảnh `fail_01_yaw_narrow_pedestrian.png`, `fail_02_fov_metric_false_negative.png`. Có `--csv` và `--out-dir` để đổi nơi lưu; số đếm khớp dữ liệu theo vật thể/frame của CP3, cùng tập GT cố định.
+
 ## 6. Khai báo sử dụng AI
 
 Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã tự kiểm chứng kết quả đó bằng cách nào. Nếu không dùng AI, ghi "Không sử dụng". Xem quy định ở `RULES.md` mục 2.
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| Codex (OpenAI) | Đọc yêu cầu CP0–CP3, đề xuất claim, viết phép chiếu/self-test, cài môi trường, chạy demo/benchmark, vẽ biểu đồ và viết báo cáo. Dùng script mẫu CP3 làm điểm xuất phát, mở rộng mẫu số cố định, trung bình đều theo vật thể, tách class/range, lưu chi tiết từng vật thể và metric tham chiếu | Codex đã kiểm tra checksum, tự kiểm bằng số/ca biên, đối chiếu 3 số FOV và 15 tỉ lệ của đề, xem ảnh/biểu đồ; chạy benchmark hai lần cho 4 CSV giống từng byte và đối chiếu tổng hợp với dữ liệu từng vật thể. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại và giải thích code, metric, số liệu trước khi nộp. |
+| Codex (OpenAI) | Đọc yêu cầu CP0–CP4, đề xuất claim, viết phép chiếu/self-test, cài môi trường, chạy demo/benchmark, vẽ biểu đồ và viết báo cáo. Dùng script mẫu CP3 làm điểm xuất phát, mở rộng mẫu số cố định, trung bình đều theo vật thể, tách class/range, lưu metric tham chiếu; tạo ảnh zoom và phân tích failure Geometry/Metric bằng dữ liệu chạy thật | Codex đã kiểm tra checksum, tự kiểm bằng số/ca biên, đối chiếu 3 số FOV và 15 tỉ lệ của đề, xem ảnh/biểu đồ; chạy benchmark hai lần cho 4 CSV giống từng byte, đối chiếu tổng hợp và số đếm failure với dữ liệu CP3. Học viên chưa xác nhận tự kiểm chứng; cần tự chạy lại và giải thích code, metric, số liệu trước khi nộp. |
